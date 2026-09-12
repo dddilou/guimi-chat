@@ -1,0 +1,117 @@
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;color:#111;background:#f4f4f4}
+button,textarea,input{font:inherit}
+button{border:0;background:none;color:inherit;padding:0}
+.wechat-shell{height:100dvh;width:100%;max-width:430px;margin:0 auto;background:#fff;display:flex;flex-direction:column;position:relative;overflow:hidden}
+.status-bar{height:calc(47px + env(safe-area-inset-top));padding:calc(13px + env(safe-area-inset-top)) 24px 5px;display:flex;align-items:center;justify-content:space-between;background:#fff;font-size:15px;line-height:1;flex:none}
+.battery{background:#111;color:#fff;border-radius:5px;padding:3px 6px;font-size:14px}
+.wx-header{height:58px;padding:0 18px;background:#fff;display:grid;grid-template-columns:42px 1fr 42px;align-items:center;border-bottom:1px solid #e5e5e5;z-index:3;flex:none}
+.back{font-size:38px;line-height:1;text-align:left;font-weight:300}
+.title{text-align:center}
+.title strong{display:block;font-size:20px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:0}
+.more{font-size:22px;font-weight:700;letter-spacing:3px;text-align:right}
+.messages{flex:1;min-height:0;overflow-y:auto;padding:14px 28px 26px;background:#fff url('/assets/background.jpg') center 56%/72% auto no-repeat}
+.time{text-align:center;margin:0 0 22px;color:#a9a9a9;font-size:12px;line-height:1}
+.row{display:flex;align-items:flex-start;gap:10px;margin:0 0 20px}
+.row.user{flex-direction:row-reverse}
+.avatar{width:43px;height:43px;border-radius:5px;object-fit:cover;flex:none}
+.bubble{position:relative;max-width:72%;border-radius:5px;padding:10px 13px;background:#fff;font-size:18px;line-height:1.42;white-space:pre-wrap;overflow-wrap:anywhere;box-shadow:0 0 0 1px #f3f3f3}
+.bubble:before{content:"";position:absolute;left:-5px;top:15px;width:10px;height:10px;background:inherit;transform:rotate(45deg);box-shadow:-1px 1px 0 #f3f3f3}
+.user .bubble{background:#95ec69;box-shadow:none}
+.user .bubble:before{left:auto;right:-5px;box-shadow:none}
+.typing{letter-spacing:3px;color:#888}
+.error{max-width:78%;margin:8px auto 18px;padding:7px 11px;border-radius:5px;background:rgba(255,255,255,.92);border:1px solid #ededed;color:#777;font-size:12px;line-height:1.45;text-align:left}
+.error button{color:#07a753;margin-left:8px}
+.input-bar{min-height:calc(67px + env(safe-area-inset-bottom));padding:10px 15px calc(10px + env(safe-area-inset-bottom));background:#f7f7f7;border-top:1px solid #e2e2e2;display:grid;grid-template-columns:34px minmax(0,1fr) 34px 34px auto;align-items:center;gap:9px;z-index:3;flex:none}
+.input-bar textarea{resize:none;width:100%;height:42px;min-height:42px;max-height:96px;border:1px solid #ededed;border-radius:10px;background:#fff;padding:8px 10px;line-height:24px;font-size:17px;outline:none;display:block}
+.round-icon{width:34px;height:42px;font-size:32px;line-height:40px;text-align:center}
+.voice{font-size:27px;line-height:42px}
+.face{font-family:Arial;font-size:32px}
+.plus{font-size:41px;font-weight:200;line-height:38px}
+.send{height:34px;background:#07c160;color:#fff;border-radius:5px;padding:0 10px;font-size:14px;white-space:nowrap}
+.send:disabled{display:none}
+.input-bar{grid-template-columns:30px minmax(0,1fr) 30px auto;gap:10px;padding-left:12px;padding-right:12px}
+.round-icon{width:30px;display:flex;align-items:center;justify-content:center}
+.round-icon svg{width:30px;height:30px}
+.messages{padding-left:17px;padding-right:17px;background-position:center 54%;background-size:90% auto;scrollbar-width:thin;scrollbar-color:#d7d7d7 transparent}
+.time span{background:#f0f0f0c9;padding:3px 6px;border-radius:4px;color:#888}
+.bubble{max-width:calc(100% - 65px);font-size:17px}
+.status-bar,.wx-header{background:#edededf5}
+.wx-header{height:52px}
+.status-bar{height:44px}
+.title strong{font-size:18px;font-weight:500}
+.history-more{display:block;color:#777;font-size:12px;margin:0 auto 20px;background:#ffffffda;padding:6px 10px;border-radius:5px}
+.background-preview{display:block;width:100%;max-height:230px;object-fit:contain;background:#fff;border-radius:8px}
+.connection-state{color:#079c4b;font-size:15px;margin-bottom:8px}
+button{cursor:pointer}
+button:focus-visible,textarea:focus-visible,input:focus-visible{outline:2px solid #07a753;outline-offset:3px}
+.typing{animation:pulse 1.2s infinite}
+@keyframes pulse{50%{opacity:.4}}
+@media(prefers-reduced-motion:reduce){.typing{animation:none}}
+.emoji-picker{position:absolute;left:0;right:0;bottom:calc(67px + env(safe-area-inset-bottom));padding:12px;background:#f7f7f7;border-top:1px solid #ddd;z-index:5;display:grid;grid-template-columns:repeat(8,1fr)}
+.emoji-picker button{font-size:24px;padding:7px}
+.scrim{position:fixed;inset:0;background:#0006;z-index:8}
+.settings{position:fixed;inset:0;margin:auto;max-width:430px;background:#f5f5f5;z-index:9;overflow:auto}
+.settings>header{height:calc(53px + env(safe-area-inset-top));padding-top:env(safe-area-inset-top);display:grid;grid-template-columns:50px 1fr 50px;align-items:center;background:#ededed;border-bottom:.5px solid #ddd;text-align:center}
+.settings>header button{font-size:40px;text-align:left;padding-left:14px}
+.friend-card{display:flex;align-items:center;gap:13px;padding:22px 18px;background:#fff}
+.friend-card img{width:55px;height:55px;border-radius:5px;object-fit:cover}
+.friend-card p{margin:0}
+.friend-card strong{display:block;font-size:17px;margin-bottom:6px}
+.friend-card small{color:#888}
+.settings nav{margin-top:10px;background:#fff;display:flex;border-bottom:1px solid #eee}
+.settings nav button{flex:1;padding:14px 4px;color:#777;font-size:13px}
+.settings nav button.active{color:#07a753;border-bottom:2px solid #07c160}
+.settings-body{padding:18px}
+.field{display:block;font-size:13px;margin-bottom:18px;color:#555}
+.field input,.field textarea{display:block;width:100%;border:0;background:#fff;border-radius:5px;padding:12px;margin-top:8px;line-height:1.6;resize:vertical}
+.field small,.note{display:block;color:#888;font-size:11px;line-height:1.7;margin-top:6px}
+.primary,.secondary,.danger{padding:11px 16px;border-radius:5px;margin:0 6px 8px 0;font-size:13px}
+.primary{background:#07c160;color:white}
+.secondary{background:#fff;border:1px solid #ddd}
+.danger{background:#fff;color:#c24f45;border:1px solid #e4caca}
+.memory-card{background:#fff;padding:12px;border-radius:5px;margin-bottom:10px;font-size:13px;line-height:1.6}
+.memory-card footer{display:flex;justify-content:space-between;margin-top:8px;color:#999;font-size:10px}
+.memory-card button{color:#56835c;margin-left:10px}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);z-index:20;background:#222d;color:#fff;border-radius:6px;padding:10px 15px;font-size:12px;max-width:80%;line-height:1.6}
+.section{margin:22px 0 10px;font-size:14px}
+.empty{display:none}
+a{color:#079c4b}
+[hidden]{display:none!important}
+@media(min-width:700px){body{background:#ededed}.wechat-shell,.settings{height:100dvh;border-radius:0;box-shadow:none}}
+
+/* Hand-drawn phone status symbols, aligned on a shared baseline. */
+.status-icons{display:flex;align-items:center;gap:6px;color:#111;height:20px}
+.status-icons svg{display:block;fill:currentColor;flex:none}
+.cellular-icon{width:19px;height:14px}
+.wifi-icon{width:19px;height:15px}
+.battery-icon{width:31px;height:17px}
+.status-heart{font-size:13px;margin-left:2px}
+.status-bar{height:calc(44px + env(safe-area-inset-top));padding:calc(10px + env(safe-area-inset-top)) 23px 8px;letter-spacing:-.3px}
+.emoji-picker{display:block;padding:0;background:#f7f7f7;box-shadow:0 -4px 15px #00000005;max-height:45dvh}
+.picker-tabs{display:flex;align-items:center;padding:0 14px;height:47px;border-bottom:1px solid #e8e8e8;gap:22px}
+.picker-tabs button{font-size:14px;padding:14px 0;color:#888;white-space:nowrap}
+.picker-tabs button.active{color:#111;box-shadow:inset 0 -2px #07c160}
+.picker-tabs #add-stickers{margin-left:auto;color:#07a753;font-size:13px}
+.picker-tabs button:disabled{opacity:.45}
+#picker-content{height:242px;max-height:calc(45dvh - 47px);overflow:auto;overscroll-behavior:contain;padding:12px 15px}
+.emoji-grid{display:grid;grid-template-columns:repeat(8,1fr);align-content:start;gap:9px 0}
+.emoji-grid button{padding:6px 0;font-size:25px}
+.sticker-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-content:start;gap:12px}
+.sticker-choice{height:76px;min-width:0;padding:4px!important;border-radius:7px}
+.sticker-choice:hover{background:#e8e8e8}
+.sticker-choice img{width:100%;height:100%;object-fit:contain}
+.sticker-empty{grid-column:1/-1;text-align:center;padding:7px 0;color:#999;font-size:12px;line-height:1.7}
+.sticker-empty>span{display:block;font-size:30px;color:#aebbb0;line-height:1.5}
+.sticker-empty strong{display:block;font-weight:500;color:#666;font-size:14px}
+.sticker-empty p{margin:8px 0}
+.sticker-empty small{font-size:11px;color:#aaa}
+.sticker-bubble{padding:0!important;background:transparent!important;box-shadow:none!important;border-radius:0}
+.sticker-bubble:before{display:none}
+.chat-sticker{display:block;max-width:150px;max-height:170px;width:auto;height:auto;object-fit:contain}
+
+.sticker-bubble{margin:5px 4px;overflow:visible}
+.presence-option{display:block;font-size:14px;line-height:1.7;margin-bottom:22px}
+.presence-option input{accent-color:#07c160}
+.presence-option small{display:block;color:#888;font-size:12px;margin-top:7px}
+

@@ -1,0 +1,10 @@
+.env
+node_modules/
+*.log
+*.pid
+*备份*.json
+.env.*
+!.env.example
+.openai/
+*预览.png
+console.log*
