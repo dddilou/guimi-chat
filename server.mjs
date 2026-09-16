@@ -8,13 +8,14 @@ import { cleanReply } from './public/message-utils.js';
 import { replyParts } from './public/reply-parts.js';
 import { listStickers, addSticker } from './stickers.mjs';
 import { selectReplyStickers } from './sticker-selection.mjs';
+import { acceptsOrigin, isLocalAdmin } from './access.mjs';
 import { loadEnvFile } from 'node:process';
 try { loadEnvFile(resolve(dirname(fileURLToPath(import.meta.url)), '.env')); } catch(err) { if(err.code !== 'ENOENT') throw err; }
 const root = resolve(dirname(fileURLToPath(import.meta.url)), 'public');
 const port = Number(process.env.PORT || 3210);
 const origin = `http://127.0.0.1:${port}`;
 let configuration = { key: process.env.DEEPSEEK_API_KEY || '', model: process.env.DEEPSEEK_MODEL || DEFAULT_MODEL };
-let busy = false;
+let activeRequests = 0;
 const mime = { '.html':'text/html; charset=utf-8', '.css':'text/css; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.jpg':'image/jpeg', '.png':'image/png', '.gif':'image/gif', '.webp':'image/webp' };
 function json(res, status, data) { res.writeHead(status, {'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}); res.end(JSON.stringify(data)); }
 async function readJSON(req) {
@@ -50,11 +51,11 @@ const server=http.createServer(async(req,res)=>{
   res.setHeader('Referrer-Policy','no-referrer');
   res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
   const requestHost=req.headers.host||'';
-  if (!/^(?:localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.\d+\.\d+|100\.(?:6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d+\.\d+):\d+$/.test(requestHost)) return json(res,403,{error:'仅允许本机或局域网访问。'});
   try {
     const pathname=new URL(req.url,origin).pathname;
     if (pathname.startsWith('/api/')) {
-      if (req.method !== 'GET' && (req.headers.origin!==`http://${requestHost}` || !req.headers['content-type']?.startsWith('application/json'))) return json(res,403,{error:'请求来源无效。'});
+      if (req.method !== 'GET' && (!acceptsOrigin(req.headers,process.env.PUBLIC_ORIGIN) || !req.headers['content-type']?.startsWith('application/json'))) return json(res,403,{error:'请求来源无效。'});
+      if(['/api/config','/api/disconnect'].includes(pathname)&&!isLocalAdmin(req))return json(res,403,{error:'线上连接由网站主人管理，请在部署平台设置 API Key。'});
       if (pathname==='/api/status' && req.method==='GET') return json(res,200,{configured:!!configuration.key,model:configuration.model});
       if (pathname==='/api/stickers' && req.method==='GET') return json(res,200,await listStickers());
       if (pathname==='/api/stickers' && req.method==='POST') return json(res,200,await addSticker(await readJSON(req)));
@@ -65,7 +66,7 @@ const server=http.createServer(async(req,res)=>{
         return json(res,200,{configured:true,model:configuration.model});
       }
       if (pathname==='/api/config' && req.method==='POST') {
-        if (busy) return json(res,409,{error:'请等当前回复完成后再更改连接。'});
+        if (activeRequests) return json(res,409,{error:'请等当前回复完成后再更改连接。'});
         const input=await readJSON(req);
         if(typeof input.key!=='string'||input.key.length>1000||!input.key.trim()) throw new Error('请填写 API Key。');
         if(typeof input.model!=='string'||!/^[a-zA-Z0-9._-]{1,100}$/.test(input.model)) throw new Error('请输入有效模型名称。');
@@ -75,16 +76,16 @@ const server=http.createServer(async(req,res)=>{
         return json(res,200,{configured:true,model:configuration.model});
       }
       if(pathname==='/api/disconnect' && req.method==='POST') {
-        if(busy) return json(res,409,{error:'请等当前回复完成后再断开连接。'});
+        if(activeRequests) return json(res,409,{error:'请等当前回复完成后再断开连接。'});
         configuration={key:'',model:configuration.model};return json(res,200,{configured:false});
       }
       if((pathname==='/api/chat'||pathname==='/api/proactive') && req.method==='POST') {
         const proactive=pathname==='/api/proactive';
         if(!configuration.key) return json(res,400,{error:'先在连接设置里填入 DeepSeek API Key，就能开始聊天。'});
-        if(busy) return json(res,409,{error:'上一条消息还在回复，请稍等。'});
+        if(activeRequests>=8) return json(res,429,{error:'当前体验人数较多，请稍后重试。'});
         const state=validateState(await readJSON(req));
         if(!proactive && (!state.messages.length || state.messages.at(-1).role!=='user')) throw new Error('请先发送一条消息。');
-        busy=true;
+        activeRequests++;
         try {
           const config={...configuration};
           const {recent,start}=selectContext(state.messages);
@@ -117,7 +118,7 @@ const server=http.createServer(async(req,res)=>{
           const parts=replyParts(text,library);
           if(!parts.length)throw new Error('这次没有生成有效回复，请重试。');
           return json(res,200,{text:parts.filter(p=>!p.sticker).map(p=>p.content).join('\n\n'),parts,summary,context:{recentCount:recent.length,memoryCount:Math.min(16,state.memories.length)}});
-        } finally {busy=false;}
+        } finally {activeRequests--;}
       }
       return json(res,404,{error:'接口不存在。'});
     }
