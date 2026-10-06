@@ -1,4 +1,5 @@
 import {createHmac, timingSafeEqual, createHash} from 'node:crypto';
+import {replyMode} from './reply-mode.mjs';
 
 // Deliberately fixed: never silently fall back to a paid Fish model.
 export const FISH_MODEL = 's2.1-pro-free';
@@ -30,6 +31,16 @@ export function createSpeechService({key='',voice=PAIPAI_VOICE,fetcher=fetch,now
     return data;
   }
   function decorate(parts,messages){
+    const mode=replyMode(messages);
+    if(mode==='text'||!key)return parts;
+    if(mode==='voice')return parts.flatMap(p=>{
+      if(p.sticker)return [p];
+      // Never silently turn a long forced-voice reply back into plain text.
+      const content=p.content.replace(/[（(]\s*(?:这(?:句|条)(?:是)?|以下是)?\s*语音(?:消息)?\s*[）)]/g,'').trim();
+      const chunks=[];
+      for(let i=0;i<content.length;i+=180){const text=content.slice(i,i+180);chunks.push({...p,content:text,speech:ticket(text)});}
+      return chunks;
+    });
     let count=voiceCount(messages);
     return parts.map(p=>{if(!count||p.sticker)return p;const speech=ticket(p.content);if(!speech)return p;count--;return {...p,speech};});
   }

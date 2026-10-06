@@ -11,6 +11,7 @@ import { selectReplyStickers, mixVoiceSticker } from './sticker-selection.mjs';
 import { acceptsOrigin, isLocalAdmin } from './access.mjs';
 import { loadEnvFile } from 'node:process';
 import { createSpeechService, voiceCount } from './speech.mjs';
+import {replyMode,speechInstructions} from './reply-mode.mjs';
 try { loadEnvFile(resolve(dirname(fileURLToPath(import.meta.url)), '.env')); } catch(err) { if(err.code !== 'ENOENT') throw err; }
 try { loadEnvFile(resolve(dirname(fileURLToPath(import.meta.url)), '.env.fish')); } catch(err) { if(err.code !== 'ENOENT') throw err; }
 const speech=createSpeechService({key:process.env.FISH_API_KEY});
@@ -116,7 +117,7 @@ const server=http.createServer(async(req,res)=>{
           const fullLibrary=await listStickers();
           const library=selectReplyStickers(fullLibrary,recent);
           const recentReplies=recent.filter(m=>m.role==='assistant').slice(-6);
-          const speechGuide=speech.enabled&&voiceCount(state.messages)?'\n本轮会把文字转为派派语音：每段最多100字，用空行分段；像发微信语音一样自然。'+(voiceCount(state.messages)>1?'可以分成两条短语音，顺着话题分享自己的看法、兴趣或虚构角色的小日常，不捏造现实朋友的行踪。':'一条短语音配合文字即可。')+'语音不替代表情，轻松闲聊时仍搭配一张语义合适的已有表情，文字和表情合计最多3条。':'';
+          const speechGuide=speechInstructions(replyMode(state.messages),speech.enabled,voiceCount(state.messages));
           const expressionGuide='\n本轮表达要求：不用儿化音。'+(!recentReplies.some(m=>m.content.includes('诡秘'))?'最近没有称呼用户，本轮有文字时自然叫一次“诡秘”。':'用户叫你诡秘时可以自然回应这个称呼，分享和关心时也可叫，不要刻意回避。')+(library.length&&!recentReplies.some(m=>m.sticker)?'最近回复没有表情：本轮遇到轻松闲聊、接梗、惊讶、分享喜好或用户索要表情时，请实际发送一张语义合适的已有表情。用户认真倾诉且图库不合适时不要硬塞。':'合适时正常用表情接话，避免连续重复同一张。');
           const stickerPrompt='\n可用表情包（名称是图像描述）：'+JSON.stringify(library.slice(0,60).map(s=>({id:s.id,含义:s.name})))+'\n适合时可以主动发其中一个表情，用 [[表情:完整id]] 独占一段；不要编造ID。文字和表情总共1～3条。可以只用一张合适的表情回应，也可文字配表情，不必解释或介绍表情；不要每次都发表情。';
           const initiative=proactive?'\n这是网页内的主动开场机会，没有新的用户消息。结合已有上下文自然分享一点角色心情或约游戏/聊cosplay/聊狼队，只选一个话题。不要说用户刚刚发了什么，不催回复，不声称在监视用户。若上文是告别、睡觉、忙碌、要求安静，或刚提过的问题尚未回复，只输出 [[安静]]。没有聊天历史时可以自然先打招呼。':'';

@@ -52,7 +52,7 @@ async function acceptReply(data,version=messageVersion){
   if(version!==messageVersion)return;
   const parts=data.parts||replyParts(data.text,stickers);
   state.summary=data.summary||state.summary;
-  for(const [index,part] of parts.slice(0,3).entries()){
+  for(const [index,part] of parts.entries()){
     if(index)await new Promise(resolve=>setTimeout(resolve,650));
     if(version!==messageVersion)return;
     const message={id:uid(),role:'assistant',...part,createdAt:new Date().toISOString()};
