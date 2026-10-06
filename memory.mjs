@@ -30,6 +30,7 @@ export function validateState(s) {
   if (!Array.isArray(s.messages) || s.messages.length > 30000 || !s.messages.every(m => m && typeof m.id === 'string' && ['user','assistant'].includes(m.role) && typeof m.content === 'string' && m.content.length <= 12000 && typeof m.createdAt === 'string')) throw new Error('聊天记录格式不正确或过大。');
   if (new Set(s.messages.map(m=>m.id)).size !== s.messages.length) throw new Error('消息编号重复。');
   if (s.messages.some(m=>m.sticker!==undefined && !validSticker(m.sticker))) throw new Error('表情包地址不正确。');
+  if (s.messages.some(m=>m.speech!==undefined && (m.role!=='assistant'||m.sticker||typeof m.speech!=='string'||m.speech.length>5000||! /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(m.speech)))) throw new Error('语音记录格式不正确。');
   if (!Array.isArray(s.memories) || s.memories.length > 1000 || !s.memories.every(m=>m && typeof m.id==='string' && typeof m.text==='string' && m.text.length<=2000 && typeof m.source==='string' && m.source.length<=100 && typeof m.createdAt==='string')) throw new Error('记忆格式不正确；最多 1000 条，每条最多 2000 字。');
   if (!s.summary || typeof s.summary.text !== 'string' || s.summary.text.length > 12000 || (s.summary.throughId !== null && !s.messages.some(m=>m.id===s.summary.throughId))) throw new Error('摘要关联的聊天记录不正确。');
   return s;

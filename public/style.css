@@ -114,4 +114,9 @@ a{color:#079c4b}
 .presence-option{display:block;font-size:14px;line-height:1.7;margin-bottom:22px}
 .presence-option input{accent-color:#07c160}
 .presence-option small{display:block;color:#888;font-size:12px;margin-top:7px}
+.speech-play{display:block;min-width:142px;min-height:36px;background:transparent;border:0;color:inherit;text-align:left;font:inherit;cursor:pointer}
+.speech-play:focus-visible{outline:2px solid #07c160;outline-offset:3px}
+.speech-transcript{font-size:12px;line-height:1.6;max-width:250px;margin-top:3px}
+.speech-transcript summary{cursor:pointer;color:#777}
+.speech-transcript div{font-size:15px;padding-top:6px;white-space:pre-wrap}
 

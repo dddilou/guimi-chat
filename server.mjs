@@ -7,10 +7,13 @@ import { DEFAULT_MODEL } from './public/defaults.js';
 import { cleanReply } from './public/message-utils.js';
 import { replyParts } from './public/reply-parts.js';
 import { listStickers, addSticker } from './stickers.mjs';
-import { selectReplyStickers } from './sticker-selection.mjs';
+import { selectReplyStickers, mixVoiceSticker } from './sticker-selection.mjs';
 import { acceptsOrigin, isLocalAdmin } from './access.mjs';
 import { loadEnvFile } from 'node:process';
+import { createSpeechService, voiceCount } from './speech.mjs';
 try { loadEnvFile(resolve(dirname(fileURLToPath(import.meta.url)), '.env')); } catch(err) { if(err.code !== 'ENOENT') throw err; }
+try { loadEnvFile(resolve(dirname(fileURLToPath(import.meta.url)), '.env.fish')); } catch(err) { if(err.code !== 'ENOENT') throw err; }
+const speech=createSpeechService({key:process.env.FISH_API_KEY});
 const root = resolve(dirname(fileURLToPath(import.meta.url)), 'public');
 const port = Number(process.env.PORT || 3210);
 const origin = `http://127.0.0.1:${port}`;
@@ -49,14 +52,19 @@ async function completion(messages, config, maxTokens = 900, temperature = .85) 
 const server=http.createServer(async(req,res)=>{
   res.setHeader('X-Content-Type-Options','nosniff');
   res.setHeader('Referrer-Policy','no-referrer');
-  res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
+  res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
   const requestHost=req.headers.host||'';
   try {
     const pathname=new URL(req.url,origin).pathname;
     if (pathname.startsWith('/api/')) {
       if (req.method !== 'GET' && (!acceptsOrigin(req.headers,process.env.PUBLIC_ORIGIN) || !req.headers['content-type']?.startsWith('application/json'))) return json(res,403,{error:'请求来源无效。'});
       if(['/api/config','/api/disconnect'].includes(pathname)&&!isLocalAdmin(req))return json(res,403,{error:'线上连接由网站主人管理，请在部署平台设置 API Key。'});
-      if (pathname==='/api/status' && req.method==='GET') return json(res,200,{configured:!!configuration.key,model:configuration.model});
+      if (pathname==='/api/status' && req.method==='GET') return json(res,200,{configured:!!configuration.key,model:configuration.model,speechConfigured:speech.enabled,speechVoice:speech.enabled?'派派':null});
+      if (pathname==='/api/speech' && req.method==='POST') {
+        const {ticket}=await readJSON(req);
+        const audio=await speech.audio(ticket);
+        res.writeHead(200,{'Content-Type':'audio/mpeg','Content-Length':audio.length,'Cache-Control':'no-store'});return res.end(audio);
+      }
       if (pathname==='/api/stickers' && req.method==='GET') return json(res,200,await listStickers());
       if (pathname==='/api/stickers' && req.method==='POST') return json(res,200,await addSticker(await readJSON(req)));
       if (pathname==='/api/validate' && req.method==='POST') return json(res,200,validateState(await readJSON(req)));
@@ -108,14 +116,15 @@ const server=http.createServer(async(req,res)=>{
           const fullLibrary=await listStickers();
           const library=selectReplyStickers(fullLibrary,recent);
           const recentReplies=recent.filter(m=>m.role==='assistant').slice(-6);
+          const speechGuide=speech.enabled&&voiceCount(state.messages)?'\n本轮会把文字转为派派语音：每段最多100字，用空行分段；像发微信语音一样自然。'+(voiceCount(state.messages)>1?'可以分成两条短语音，顺着话题分享自己的看法、兴趣或虚构角色的小日常，不捏造现实朋友的行踪。':'一条短语音配合文字即可。')+'语音不替代表情，轻松闲聊时仍搭配一张语义合适的已有表情，文字和表情合计最多3条。':'';
           const expressionGuide='\n本轮表达要求：不用儿化音。'+(!recentReplies.some(m=>m.content.includes('诡秘'))?'最近没有称呼用户，本轮有文字时自然叫一次“诡秘”。':'用户叫你诡秘时可以自然回应这个称呼，分享和关心时也可叫，不要刻意回避。')+(library.length&&!recentReplies.some(m=>m.sticker)?'最近回复没有表情：本轮遇到轻松闲聊、接梗、惊讶、分享喜好或用户索要表情时，请实际发送一张语义合适的已有表情。用户认真倾诉且图库不合适时不要硬塞。':'合适时正常用表情接话，避免连续重复同一张。');
           const stickerPrompt='\n可用表情包（名称是图像描述）：'+JSON.stringify(library.slice(0,60).map(s=>({id:s.id,含义:s.name})))+'\n适合时可以主动发其中一个表情，用 [[表情:完整id]] 独占一段；不要编造ID。文字和表情总共1～3条。可以只用一张合适的表情回应，也可文字配表情，不必解释或介绍表情；不要每次都发表情。';
           const initiative=proactive?'\n这是网页内的主动开场机会，没有新的用户消息。结合已有上下文自然分享一点角色心情或约游戏/聊cosplay/聊狼队，只选一个话题。不要说用户刚刚发了什么，不催回复，不声称在监视用户。若上文是告别、睡觉、忙碌、要求安静，或刚提过的问题尚未回复，只输出 [[安静]]。没有聊天历史时可以自然先打招呼。':'';
           const prompt=buildPrompt(state.persona,state.memories,summary.text,recent.slice(-3).map(m=>m.content).join('\n')) + `\n【后台时间参考，不属于聊天正文，不得复述或生成时间标签】\n${timestamps}\n双方可能发送表情包。只能依据表情的文字描述理解，不得假装看到了未描述的图片内容。`+stickerPrompt+expressionGuide+initiative+'\n角色有自己的偏好、看法和反应，不为了讨好而自动赞同用户。不重复复述用户的话，不机械模仿用户的表情。根据自己要表达的情绪选择不同表情；没有合适的就用文字。可以温和提出不同意见和理由，但不刻意唱反调。用户连续发多条时，结合这批内容回应，以最新补充或更正为准，不逐条机械回答。';
-          const text=cleanReply(await completion([{role:'system',content:prompt},...recent.map(m=>({role:m.role,content:m.sticker ? `[${m.role==='user'?'用户':'角色'}发送表情包，描述：${m.content}]` : m.role==='assistant' ? cleanReply(m.content) : m.content}))],config));
+          const text=cleanReply(await completion([{role:'system',content:prompt+speechGuide},...recent.map(m=>({role:m.role,content:m.sticker ? `[${m.role==='user'?'用户':'角色'}发送表情包，描述：${m.content}]` : m.role==='assistant' ? cleanReply(m.content) : m.content}))],config));
           if(proactive && text.includes('[[安静]]'))return json(res,200,{parts:[],text:'',summary});
           if(!text) throw new Error('这次没有生成有效回复，请重试。');
-          const parts=replyParts(text,library);
+          const parts=speech.enabled?speech.decorate(mixVoiceSticker(replyParts(text,library),library,state.messages),state.messages):replyParts(text,library);
           if(!parts.length)throw new Error('这次没有生成有效回复，请重试。');
           return json(res,200,{text:parts.filter(p=>!p.sticker).map(p=>p.content).join('\n\n'),parts,summary,context:{recentCount:recent.length,memoryCount:Math.min(16,state.memories.length)}});
         } finally {activeRequests--;}

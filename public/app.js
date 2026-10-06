@@ -2,6 +2,7 @@ import { DEFAULT_PERSONA, DEFAULT_MODEL, refreshPersona } from './defaults.js';
 import { cleanReply } from './message-utils.js';
 import { replyParts } from './reply-parts.js';
 import { canInitiate } from './presence.js';
+import { renderSpeech, prepareSpeech } from './speech-player.js';
 const $ = s => document.querySelector(s), KEY = 'guimi-chat-v2';
 const empty = () => ({persona:{...DEFAULT_PERSONA,name:'Aa.💩'},messages:[],memories:[],summary:{text:'',throughId:null}});
 let state = empty(), busy = false, error = '', tab = 'persona', visible = 200;
@@ -38,7 +39,8 @@ function render() {
     if(m.sticker && /^\/assets\/stickers\/[a-f0-9]{64}\.(gif|png|jpg|webp)$/.test(m.sticker)){
       const bubble=row.querySelector('.bubble');bubble.classList.add('sticker-bubble');
       const img=document.createElement('img');img.src=m.sticker;img.alt=m.content;img.className='chat-sticker'+stickerMotion(m.sticker);img.loading='lazy';bubble.append(img);
-    } else row.querySelector('.bubble').textContent=m.role==='assistant'?cleanReply(m.content):m.content;
+    } else if(m.role==='assistant'&&m.speech)renderSpeech(row.querySelector('.bubble'),m,toast);
+    else row.querySelector('.bubble').textContent=m.role==='assistant'?cleanReply(m.content):m.content;
     row.querySelector('.bubble').ondblclick=()=>remember(`${m.role==='user'?'用户':'角色'}原话：${m.content}`);
     box.append(row);last=time;
   }
@@ -53,7 +55,8 @@ async function acceptReply(data,version=messageVersion){
   for(const [index,part] of parts.slice(0,3).entries()){
     if(index)await new Promise(resolve=>setTimeout(resolve,650));
     if(version!==messageVersion)return;
-    state.messages.push({id:uid(),role:'assistant',...part,createdAt:new Date().toISOString()});save();render();
+    const message={id:uid(),role:'assistant',...part,createdAt:new Date().toISOString()};
+    state.messages.push(message);save();render();prepareSpeech(message);
   }
   save();
 }
